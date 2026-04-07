@@ -173,3 +173,43 @@ python -m py_compile common\paths.py deerflow\research_copilot\document_normaliz
 一句话总结：
 
 > `agentmatrix-research-core` 已经从“新建空仓”升级成“可开始承接研究开发的独立仓库”，并完成了首批研究模块迁移与结构骨架搭建；当前网站不受影响，后续研究开发应优先在新仓推进。
+
+## 11. 第三阶段启动：策略统一接口 / 回测 / 归因骨架
+
+为支持“先落地网站回测与收益归因，再逐步接入更多策略”的目标，本轮已新增第一版标准化骨架：
+
+### 11.1 Contracts
+
+- `contracts/strategy.py`：统一策略接口、策略元信息、目标仓位和策略决策结构
+- `contracts/backtest.py`：统一回测请求、绩效指标、净值曲线、交易记录、持仓快照和回测结果结构
+- `contracts/attribution.py`：统一收益归因摘要和贡献桶结构
+
+### 11.2 Backtest Adapter
+
+- `research_core/backtest_adapter/base.py`：回测适配器抽象层
+- `research_core/backtest_adapter/gm_adapter.py`：第一版 GM / 掘金回测适配器骨架
+- 当前重点是先实现“同一策略代码可规划 GM 回测”的执行计划生成，而不是一次性打通所有真实结果解析
+
+### 11.3 Attribution Engine
+
+- `research_core/attribution_engine/basic.py`：第一版基础收益归因构造器
+- 当前版本支持总收益、基准收益、超额收益、费用拖累、滑点拖累、现金拖累，以及按持仓/行业维度的贡献桶输出
+
+### 11.4 策略统一接口方向
+
+当前方向明确为：
+
+- DeerFlow 负责任务编排和状态治理
+- `research_core` 负责确定性回测、归因、结果产出
+- 掘金量化作为执行与回测落地引擎之一
+- 后续可在相同 contracts 下继续接入 Qlib，而不与现有架构冲突
+
+### 11.5 当前定位
+
+这一步仍属于“平台底座建设”，重点是先定义统一数据结构和 GM 兼容回测入口。
+
+后续下一步应继续：
+
+- 选择一个 BigQuant 策略样本进行首版接入
+- 将 GM 回测真实输出映射到 `BacktestResult`
+- 将网站展示层接到标准化回测结果和收益归因结果
