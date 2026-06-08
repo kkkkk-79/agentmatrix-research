@@ -1,5 +1,5 @@
 # ============================================================
-# Factor Operators - 因子基础操作函数
+# Factor Operators - 因子基础操作函数（已修复版）
 # ============================================================
 
 import numpy as np
@@ -28,15 +28,34 @@ def tsrank(series, n):
     return ts_rank(series, n)
 
 
-def ts_corr(x, y=None, window=None, n=None):
-    """correlation / CORR: 滚动相关系数"""
+def ts_corr(x, y=None, window=None, n=None, 
+            symbol_col: str = 'symbol', date_col: str = 'date') -> pd.Series:
+    """【关键修复】CORR / 滚动相关系数 - 严格按每个股票自己的过去N天时序计算
+       原实现容易把不同股票数据混在一起（横截面错误），现已修复。
+    """
+    corr_window = n if n is not None else window
+    if corr_window is None:
+        raise ValueError("必须提供 window 或 n 参数")
+
+    # 支持长格式 DataFrame（最常用）
     if isinstance(x, pd.DataFrame):
-        group = x
-        col_a = y
-        col_b = window
-        corr_window = n
-        return group[col_a].rolling(corr_window).corr(group[col_b])
-    corr_window = window if window is not None else n
+        df = x.copy()
+        if symbol_col in df.columns and date_col in df.columns:
+            df = df.sort_values([symbol_col, date_col])
+            # 自动处理 col_a / col_b（兼容不同调用方式）
+            col_a = y if isinstance(y, str) else df.columns[0]
+            col_b = window if isinstance(window, str) else df.columns[1]
+            def _corr_group(g):
+                return g[col_a].rolling(window=corr_window, min_periods=1).corr(g[col_b])
+            result = df.groupby(symbol_col).apply(_corr_group)
+            return result.reset_index(level=0, drop=True)
+        else:
+            # fallback：宽格式或简单两列
+            col_a = df.columns[0]
+            col_b = df.columns[1] if len(df.columns) > 1 else y
+            return df[col_a].rolling(corr_window).corr(df[col_b] if isinstance(col_b, str) else col_b)
+
+    # 普通 Series（单股票）
     return x.rolling(corr_window).corr(y)
 
 
@@ -134,3 +153,9 @@ def sma_gtja(series, n, m):
         else:
             result[i] = (values[i] * m + result[i - 1] * (n - m)) / n
     return pd.Series(result, index=series.index)
+
+
+# 新增 helper（推荐使用）
+def adv_amount(series: pd.Series, window: int) -> pd.Series:
+    """adv20 使用 amount（成交额）计算，保证与 alpha7 单位一致"""
+    return ts_mean(series, window)
