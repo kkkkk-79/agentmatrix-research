@@ -92,3 +92,20 @@ def main():
 
 if __name__ == '__main__':
     main()
+import pandas as pd
+import numpy as np
+
+# 复现 review 中提到的 date/code/left/right 长表
+test_df = pd.DataFrame({
+    'date': pd.date_range('2023-01-01', periods=200),
+    'code': ['000001'] * 100 + ['000002'] * 100,
+    'left': np.random.randn(200),
+    'right': np.random.randn(200)
+})
+
+# 使用显式列名调用（推荐方式）
+result = ts_corr(test_df, 'left', 'right', 20, group_col='code')
+
+print("测试通过！结果长度:", len(result))
+print(result.head(10))
+print("无报错 ✓")
